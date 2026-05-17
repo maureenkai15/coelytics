@@ -38,10 +38,16 @@ section[data-testid="stSidebar"] * { color: #94a3b8 !important; }
 .stat-cell { background: #13131f; border: 1px solid #1e1e30; border-radius: 10px; padding: 0.85rem 1rem; }
 .stat-cell-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: #475569; margin-bottom: 4px; }
 .stat-cell-val { font-size: 1.2rem; font-weight: 600; color: #e2e8f0; }
-div[data-testid="stMetric"] { background: #13131f; border: 1px solid #1e1e30; border-radius: 12px; padding: 1rem 1.2rem !important; }
+div[data-testid="stMetric"] { background: #13131f !important; border: 1px solid #1e1e30 !important; border-radius: 12px !important; padding: 1rem 1.2rem !important; }
+div[data-testid="stMetricValue"] { font-size: 1.35rem !important; font-weight: 700 !important; color: #f1f5f9 !important; }
+div[data-testid="stMetricLabel"] { font-size: 0.7rem !important; color: #475569 !important; }
+.stApp, .main { background-color: #0a0a0f !important; }
 div[data-testid="stMetricValue"] { font-size: 1.35rem !important; font-weight: 700 !important; color: #f1f5f9 !important; }
 div[data-testid="stMetricLabel"] { font-size: 0.7rem !important; text-transform: uppercase; letter-spacing: 0.07em; color: #475569 !important; }
 .stRadio > label { display: none; }
+.main .block-container { background: #0a0a0f !important; }
+header[data-testid="stHeader"] { background: #0a0a0f !important; }
+.stApp { background: #0a0a0f !important; }
 h1, h2 { color: #f1f5f9 !important; font-weight: 700 !important; }
 thead tr th { background: #13131f !important; color: #475569 !important; font-size: 0.72rem !important; text-transform: uppercase !important; }
 tbody tr td { font-size: 0.82rem !important; }
