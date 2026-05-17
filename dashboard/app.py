@@ -77,32 +77,22 @@ PLOT = dict(
     font=dict(family="Inter", size=12, color="#64748b"),
 )
 
+from backend.services.data_loader import get_latest, get_history, get_stats
+
 @st.cache_data(ttl=300)
 def get_latest():
-    try:
-        return requests.get(f"{API_BASE}/latest", timeout=5).json()["data"]
-    except:
-        return []
+    from backend.services.data_loader import get_latest as _get_latest
+    return _get_latest()
 
 @st.cache_data(ttl=300)
 def get_history(category=None, start_year=None, end_year=None):
-    try:
-        p = {}
-        if category: p["category"] = category
-        if start_year: p["start_year"] = start_year
-        if end_year: p["end_year"] = end_year
-        df = pd.DataFrame(requests.get(f"{API_BASE}/history", params=p, timeout=10).json()["data"])
-        df["month"] = pd.to_datetime(df["month"])
-        return df
-    except:
-        return pd.DataFrame()
+    from backend.services.data_loader import get_history as _get_history
+    return _get_history(category=category, start_year=start_year, end_year=end_year)
 
 @st.cache_data(ttl=300)
 def get_stats():
-    try:
-        return requests.get(f"{API_BASE}/summary/stats", timeout=5).json()["data"]
-    except:
-        return []
+    from backend.services.data_loader import get_stats as _get_stats
+    return _get_stats()
 
 @st.cache_data(ttl=60)
 def get_forecast(category, months):
