@@ -4,6 +4,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import pickle
+from pathlib import Path
+import sys
+sys.path.append(".")
 
 st.set_page_config(
     page_title="COElytics",
@@ -19,61 +23,40 @@ st.markdown("""
 .block-container { padding: 2rem 2.5rem 3rem !important; max-width: 1400px; }
 section[data-testid="stSidebar"] { background: #0d0d14 !important; border-right: 1px solid #1e1e2e; }
 section[data-testid="stSidebar"] * { color: #94a3b8 !important; }
-
-.kpi-wrap {
-    background: #13131f;
-    border: 1px solid #1e1e30;
-    border-radius: 14px;
-    padding: 1.25rem 1rem 1rem;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-}
-.kpi-wrap::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    border-radius: 14px 14px 0 0;
-}
+.kpi-wrap { background: #13131f; border: 1px solid #1e1e30; border-radius: 14px; padding: 1.25rem 1rem 1rem; text-align: center; position: relative; overflow: hidden; }
 .kpi-cat  { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
 .kpi-val  { font-size: 1.85rem; font-weight: 700; letter-spacing: -1px; line-height: 1; }
 .kpi-meta { font-size: 0.72rem; color: #475569; margin-top: 6px; line-height: 1.6; }
 .kpi-signal { font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; display: inline-block; margin-top: 6px; }
-
 .page-title { font-size: 1.6rem; font-weight: 700; color: #f1f5f9; margin-bottom: 2px; }
 .page-sub   { font-size: 0.82rem; color: #475569; margin-bottom: 1.5rem; }
 .section-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; margin: 1.5rem 0 0.6rem; }
-.divider { border: none; border-top: 1px solid #1e1e30; margin: 1.5rem 0; }
-
 .insight { background: #0f172a; border-left: 3px solid #6366f1; border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #94a3b8; line-height: 1.6; margin-top: 0.75rem; }
-.warn    { background: #1a1200; border-left: 3px solid #d97706; border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #92400e; line-height: 1.6; margin-top: 0.75rem; }
-.good    { background: #052e16; border-left: 3px solid #16a34a; border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #166534; line-height: 1.6; margin-top: 0.75rem; }
-
+.warn    { background: #1a1200; border-left: 3px solid #d97706; border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #fcd34d; line-height: 1.6; margin-top: 0.75rem; }
+.good    { background: #052e16; border-left: 3px solid #16a34a; border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; color: #86efac; line-height: 1.6; margin-top: 0.75rem; }
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 0.5rem; }
 .stat-cell { background: #13131f; border: 1px solid #1e1e30; border-radius: 10px; padding: 0.85rem 1rem; }
 .stat-cell-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: #475569; margin-bottom: 4px; }
 .stat-cell-val { font-size: 1.2rem; font-weight: 600; color: #e2e8f0; }
-
 div[data-testid="stMetric"] { background: #13131f; border: 1px solid #1e1e30; border-radius: 12px; padding: 1rem 1.2rem !important; }
 div[data-testid="stMetricValue"] { font-size: 1.35rem !important; font-weight: 700 !important; color: #f1f5f9 !important; }
 div[data-testid="stMetricLabel"] { font-size: 0.7rem !important; text-transform: uppercase; letter-spacing: 0.07em; color: #475569 !important; }
-div[data-testid="stMetricDelta"] { font-size: 0.78rem !important; }
-
-.stSlider > div { padding: 0 !important; }
 .stRadio > label { display: none; }
-div[data-baseweb="radio"] label { font-size: 0.85rem !important; padding: 6px 0 !important; }
+h1, h2 { color: #f1f5f9 !important; font-weight: 700 !important; }
+thead tr th { background: #13131f !important; color: #475569 !important; font-size: 0.72rem !important; text-transform: uppercase !important; }
+tbody tr td { font-size: 0.82rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
 API_BASE = "http://localhost:8000/api/coe"
+MODEL_DIR = Path("ml_models")
 
 CATS = {
-    "Category A": {"color": "#818cf8", "accent": "#312e81", "label": "Cat A", "desc": "Small cars ≤1600cc · Mass market"},
-    "Category B": {"color": "#f472b6", "accent": "#831843", "label": "Cat B", "desc": "Large cars >1600cc · Premium"},
-    "Category C": {"color": "#34d399", "accent": "#064e3b", "label": "Cat C", "desc": "Goods vehicles & buses"},
-    "Category D": {"color": "#fb923c", "accent": "#7c2d12", "label": "Cat D", "desc": "Motorcycles"},
-    "Category E": {"color": "#a78bfa", "accent": "#3b0764", "label": "Cat E", "desc": "Open · All except motorcycles"},
+    "Category A": {"color": "#818cf8", "label": "Cat A", "desc": "Small cars ≤1600cc · Mass market"},
+    "Category B": {"color": "#f472b6", "label": "Cat B", "desc": "Large cars >1600cc · Premium"},
+    "Category C": {"color": "#34d399", "label": "Cat C", "desc": "Goods vehicles & buses"},
+    "Category D": {"color": "#fb923c", "label": "Cat D", "desc": "Motorcycles"},
+    "Category E": {"color": "#a78bfa", "label": "Cat E", "desc": "Open · All except motorcycles"},
 }
 COLOR_MAP = {k: v["color"] for k, v in CATS.items()}
 
@@ -109,6 +92,16 @@ def get_stats():
         return requests.get(f"{API_BASE}/summary/stats", timeout=5).json()["data"]
     except: return []
 
+@st.cache_data(ttl=60)
+def get_forecast(category, months):
+    from backend.models.predictor import predict_future
+    return predict_future(category, months_ahead=months)
+
+@st.cache_data(ttl=60)
+def get_history_local(category):
+    from backend.models.predictor import load_and_prepare
+    return load_and_prepare(category)[["month", "premium"]].tail(24)
+
 # ── Sidebar ───────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
@@ -126,6 +119,7 @@ with st.sidebar:
         "Total Cost of Ownership",
         "Renew vs Scrap",
         "Bid Timing Advisor",
+        "ML Price Forecast",
     ])
 
     st.markdown(f"""
@@ -155,7 +149,7 @@ if page == "Market Overview":
             quota = item.get("quota") or 1
             bids  = item.get("bids_received") or 0
             ratio = bids / quota
-            if ratio > 1.5:   sig, sc, sb = "Hot", "#ef4444", "#2d0a0a"
+            if ratio > 1.5:   sig, sc, sb = "Hot",  "#ef4444", "#2d0a0a"
             elif ratio > 1.1: sig, sc, sb = "Warm", "#f59e0b", "#1c1200"
             else:             sig, sc, sb = "Cool", "#22c55e", "#052e16"
             with cols[i]:
@@ -176,7 +170,7 @@ if page == "Market Overview":
                       labels={"premium":"Premium (SGD)","month":"","category":""})
         fig.update_layout(**PLOT, height=360,
                           yaxis=dict(tickprefix="$",tickformat=",",gridcolor="#13131f",zerolinecolor="#1e1e30"),
-                          xaxis=dict(gridcolor="#13131f",zerolinecolor="#1e1e30"),
+                          xaxis=dict(gridcolor="#13131f"),
                           legend=dict(orientation="h",y=1.08,x=0,bgcolor="rgba(0,0,0,0)"))
         fig.update_traces(line=dict(width=1.6))
         st.plotly_chart(fig, use_container_width=True)
@@ -248,7 +242,7 @@ elif page == "Price Trends":
                           legend=dict(orientation="h",y=1.06,bgcolor="rgba(0,0,0,0)"))
         st.plotly_chart(fig, use_container_width=True)
 
-        st.markdown('<div class="section-label">Annual averages with year-on-year change</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Annual averages</div>', unsafe_allow_html=True)
         df_f = df_f.copy()
         df_f["year"] = df_f["month"].dt.year
         pivot = df_f.groupby(["year","category"])["premium"].mean().round(0).unstack("category")
@@ -293,7 +287,7 @@ elif page == "Category Analysis":
         st.markdown('<div class="section-label">Premium history</div>', unsafe_allow_html=True)
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=df["month"],y=df["premium"],
-            fill="tozeroy",fillcolor=f"{c['color']}12",
+            fill="tozeroy", fillcolor="rgba(129,140,248,0.07)",
             line=dict(color=c["color"],width=2),
             hovertemplate="%{x|%b %Y}: $%{y:,.0f}<extra></extra>"))
         fig.add_hline(y=avg,line_dash="dot",line_color="#334155",
@@ -326,8 +320,7 @@ elif page == "Category Analysis":
                                yaxis=dict(gridcolor="#13131f",title=""))
             st.plotly_chart(fig3, use_container_width=True)
 
-        st.markdown(f'<div class="section-label">Historical percentile</div>', unsafe_allow_html=True)
-        st.markdown(f"Current premium **${lp:,.0f}** is higher than **{pct:.0f}%** of all past {sel} premiums.")
+        st.markdown(f'<div class="section-label">Historical percentile — current premium is higher than {pct:.0f}% of all past premiums</div>', unsafe_allow_html=True)
         st.progress(pct/100)
 
 # ══════════════════════════════════════════════════════════════
@@ -354,7 +347,6 @@ elif page == "Affordability Calculator":
         loan_pct   = st.slider("Loan %", 0, 70, 60, help="MAS cap: 70% for OMV ≤$20k, 60% above")
         tenure     = st.slider("Tenure (years)", 1, 7, 5)
         rate       = st.slider("Interest rate % p.a.", 1.5, 5.0, 2.78, 0.01)
-
         st.markdown('<div class="section-label">Your finances</div>', unsafe_allow_html=True)
         income     = st.number_input("Monthly gross income (SGD)", value=6000, step=500, format="%d")
         other_debt = st.number_input("Other monthly loan repayments (SGD)", value=0, step=100, format="%d")
@@ -371,7 +363,6 @@ elif page == "Affordability Calculator":
         inc_need  = (monthly + other_debt) / 0.30
 
         st.markdown('<div class="section-label">Results</div>', unsafe_allow_html=True)
-
         m1,m2 = st.columns(2)
         m1.metric("Total OTR cost", f"${total:,.0f}")
         m2.metric("Downpayment needed", f"${dp:,.0f}")
@@ -379,7 +370,7 @@ elif page == "Affordability Calculator":
         m3.metric("Monthly repayment", f"${monthly:,.0f}")
         m4.metric("Total interest paid", f"${interest:,.0f}")
 
-        st.markdown('<div class="section-label">Debt service ratio (DSR)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Debt service ratio</div>', unsafe_allow_html=True)
         dsr_color = "#22c55e" if dsr < 30 else ("#f59e0b" if dsr < 40 else "#ef4444")
         st.markdown(f"""
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
@@ -390,16 +381,15 @@ elif page == "Affordability Calculator":
         st.progress(min(dsr/60, 1.0))
 
         if dsr < 30:
-            st.markdown('<div class="good">✓ DSR is healthy. Monthly commitments are comfortably within the 30% guideline. You have good financial buffer.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="good">✓ DSR is healthy. Monthly commitments are comfortably within the 30% guideline.</div>', unsafe_allow_html=True)
         elif dsr < 40:
-            st.markdown('<div class="warn">△ DSR is stretched. Consider increasing downpayment, extending tenure, or choosing a lower-priced vehicle to reduce monthly burden.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="warn">△ DSR is stretched. Consider increasing downpayment or choosing a lower-priced vehicle.</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="warn">✕ DSR exceeds 40%. This purchase may cause financial stress. Consider a smaller car, Cat D motorcycle, or waiting for lower COE.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="warn">✕ DSR exceeds 40%. This purchase may cause financial stress.</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="section-label">Recommended minimum income</div>', unsafe_allow_html=True)
-        st.metric("To maintain ≤30% DSR", f"${inc_need:,.0f}/month")
+        st.metric("Recommended minimum income", f"${inc_need:,.0f}/month")
 
-        st.markdown('<div class="section-label">Loan amortisation schedule</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Loan amortisation</div>', unsafe_allow_html=True)
         rows = []
         bal = loan
         for yr in range(1, tenure+1):
@@ -423,7 +413,7 @@ elif page == "Affordability Calculator":
 # ══════════════════════════════════════════════════════════════
 elif page == "Total Cost of Ownership":
     st.markdown('<div class="page-title">Total Cost of Ownership</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Full 10-year cost breakdown — beyond just the sticker price</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Full cost breakdown beyond the sticker price</div>', unsafe_allow_html=True)
 
     latest  = get_latest()
     lmap    = {d["category"]: d["premium"] for d in latest}
@@ -468,9 +458,8 @@ elif page == "Total Cost of Ownership":
         fig = go.Figure(go.Pie(
             labels=list(items.keys()), values=list(items.values()),
             hole=0.55, marker_colors=colors, marker_line_width=0,
-            textfont=dict(size=11),
         ))
-        fig.update_layout(**PLOT, height=300, showlegend=True,
+        fig.update_layout(**PLOT, height=280, showlegend=True,
                           legend=dict(orientation="v",x=1.02,y=0.5,bgcolor="rgba(0,0,0,0)",font=dict(size=11)))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -518,10 +507,11 @@ elif page == "Renew vs Scrap":
         m4.metric("Savings vs buying new", f"${saving:,.0f}")
 
         fig = go.Figure(go.Bar(
-            x=["COE Renewal", "Scrap Value", "New Car Cost"],
+            x=["COE Renewal","Scrap Value","New Car Cost"],
             y=[renewal, scrap, new_tot],
             marker_color=["#818cf8","#34d399","#f472b6"],
-            marker_line_width=0, text=[f"${v:,.0f}" for v in [renewal,scrap,new_tot]],
+            marker_line_width=0,
+            text=[f"${v:,.0f}" for v in [renewal,scrap,new_tot]],
             textposition="outside", textfont=dict(size=12),
         ))
         fig.update_layout(**PLOT, height=280,
@@ -530,11 +520,11 @@ elif page == "Renew vs Scrap":
         st.plotly_chart(fig, use_container_width=True)
 
         if renewal < 60000 and renewal < new_tot * 0.45:
-            st.markdown('<div class="good">✓ Renewal is financially sensible. Your existing vehicle costs significantly less than buying new at current COE prices.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="good">✓ Renewal is financially sensible at current COE prices.</div>', unsafe_allow_html=True)
         elif renewal > 90000:
-            st.markdown('<div class="warn">△ Renewal cost is high. With COEs at this level, scrapping and buying a Cat D or waiting for a lower COE cycle may be worth considering.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="warn">△ Renewal cost is high. Scrapping or waiting may be worth considering.</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="insight">→ Close call. Factor in your vehicle\'s condition, remaining lifespan, and whether COE premiums are trending up or down before deciding.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="insight">→ Close call. Factor in vehicle condition and COE trend direction.</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════
 # PAGE 7 — Bid Timing Advisor
@@ -548,7 +538,7 @@ elif page == "Bid Timing Advisor":
     df  = get_history(category=sel)
 
     if not df.empty and len(df) > 12:
-        df     = df.sort_values("month").reset_index(drop=True)
+        df = df.sort_values("month").reset_index(drop=True)
         df["ma3"]  = df["premium"].rolling(3).mean()
         df["ma12"] = df["premium"].rolling(12).mean()
 
@@ -578,19 +568,108 @@ elif page == "Bid Timing Advisor":
                           legend=dict(orientation="h",y=1.08,bgcolor="rgba(0,0,0,0)"))
         st.plotly_chart(fig, use_container_width=True)
 
-        st.markdown(f'<div class="section-label">Historical percentile — {pct:.0f}th percentile</div>', unsafe_allow_html=True)
         pct_color = "#ef4444" if pct > 75 else ("#22c55e" if pct < 35 else "#f59e0b")
+        st.markdown(f'<div class="section-label">Historical percentile — {pct:.0f}th percentile</div>', unsafe_allow_html=True)
         st.markdown(f"""
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
             <span style="font-size:1.5rem;font-weight:700;color:{pct_color};">{pct:.0f}%</span>
-            <span style="font-size:0.82rem;color:#475569;">of historical {sel} premiums were <b style="color:#94a3b8">below</b> today's price</span>
+            <span style="font-size:0.82rem;color:#475569;">of historical premiums were below today's price</span>
         </div>
         """, unsafe_allow_html=True)
         st.progress(pct/100)
 
         if pct > 75:
-            st.markdown(f'<div class="warn">△ Premiums are historically elevated and {trend}. If your timeline allows, consider waiting — premiums have historically cycled down from these levels.</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="warn">△ Premiums are historically elevated and {trend}. Consider waiting if your timeline allows.</div>', unsafe_allow_html=True)
         elif pct < 35:
-            st.markdown(f'<div class="good">✓ Premiums are historically low and {trend}. This may be a relatively good window to bid — act before the next upswing.</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="good">✓ Premiums are historically low and {trend}. This may be a good window to bid.</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="insight">→ Premiums are in a neutral range. No strong timing signal — let your personal needs and financial readiness drive the decision.</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="insight">→ Premiums are in a neutral range. Let your personal needs drive the decision.</div>', unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════
+# PAGE 8 — ML Price Forecast
+# ══════════════════════════════════════════════════════════════
+elif page == "ML Price Forecast":
+    st.markdown('<div class="page-title">ML Price Forecast</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">XGBoost predictions trained on 16 years of Singapore COE data</div>', unsafe_allow_html=True)
+
+    c1, c2 = st.columns([1, 2], gap="large")
+    with c1:
+        sel_cat    = st.selectbox("Category to forecast", list(CATS.keys()))
+        months_out = st.slider("Months ahead", 1, 12, 6)
+        cat_slug   = sel_cat.replace(" ", "_").lower()
+        model_path = MODEL_DIR / f"xgb_{cat_slug}.pkl"
+
+        if model_path.exists():
+            with open(model_path, "rb") as f:
+                meta = pickle.load(f)
+            c = CATS[sel_cat]
+            st.markdown(f"""
+            <div class="kpi-wrap" style="margin-top:1rem;border-color:{c['color']}22;">
+                <div style="position:absolute;top:0;left:0;right:0;height:2px;background:{c['color']};border-radius:14px 14px 0 0;"></div>
+                <div class="kpi-cat" style="color:{c['color']};">Model performance (held-out test set)</div>
+                <div class="stat-grid" style="margin-top:0.75rem;">
+                    <div class="stat-cell">
+                        <div class="stat-cell-label">MAE</div>
+                        <div class="stat-cell-val">${meta['mae']:,.0f}</div>
+                    </div>
+                    <div class="stat-cell">
+                        <div class="stat-cell-label">MAPE</div>
+                        <div class="stat-cell-val">{meta['mape']:.1f}%</div>
+                    </div>
+                    <div class="stat-cell">
+                        <div class="stat-cell-label">RMSE</div>
+                        <div class="stat-cell-val">${meta['rmse']:,.0f}</div>
+                    </div>
+                    <div class="stat-cell">
+                        <div class="stat-cell-label">Last actual</div>
+                        <div class="stat-cell-val">${meta['last_premium']:,.0f}</div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if meta['mape'] < 5:
+                st.markdown('<div class="good">✓ Excellent accuracy — MAPE under 5%.</div>', unsafe_allow_html=True)
+            elif meta['mape'] < 10:
+                st.markdown('<div class="insight">→ Good accuracy — MAPE under 10%.</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="warn">△ Moderate accuracy. Use as directional guidance only.</div>', unsafe_allow_html=True)
+
+    with c2:
+        if model_path.exists():
+            with st.spinner("Generating forecast..."):
+                fc_df = get_forecast(sel_cat, months_out)
+                hist  = get_history_local(sel_cat)
+
+            color = CATS[sel_cat]["color"]
+            fig   = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=hist["month"], y=hist["premium"],
+                name="Historical", line=dict(color=color, width=2),
+                hovertemplate="%{x|%b %Y}: $%{y:,.0f}<extra></extra>",
+            ))
+            fig.add_trace(go.Scatter(
+                x=fc_df["month"], y=fc_df["predicted_premium"],
+                name="Forecast", line=dict(color="#fbbf24", width=2.5, dash="dot"),
+                mode="lines+markers", marker=dict(size=7, color="#fbbf24"),
+                hovertemplate="%{x|%b %Y}: $%{y:,.0f}<extra></extra>",
+            ))
+            fig.add_vline(x=hist["month"].iloc[-1], line_dash="dot", line_color="#334155",
+                          annotation_text="Today", annotation_font_color="#475569")
+            fig.update_layout(**PLOT, height=380, hovermode="x unified",
+                              yaxis=dict(tickprefix="$",tickformat=",",gridcolor="#13131f",zerolinecolor="#1e1e30"),
+                              xaxis=dict(gridcolor="#13131f"),
+                              legend=dict(orientation="h",y=1.06,bgcolor="rgba(0,0,0,0)"))
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.markdown('<div class="section-label">Forecast table</div>', unsafe_allow_html=True)
+            fc_display = fc_df.copy()
+            fc_display["month"] = fc_display["month"].dt.strftime("%b %Y")
+            fc_display["predicted_premium"] = fc_display["predicted_premium"].apply(lambda x: f"${x:,.0f}")
+            fc_display = fc_display[["month","predicted_premium"]].rename(
+                columns={"month":"Month","predicted_premium":"Predicted Premium"})
+            st.dataframe(fc_display, use_container_width=True, hide_index=True)
+
+            st.markdown('<div class="insight">Forecasts are based on historical patterns only. COE premiums are affected by government policy, economic conditions, and quota changes not captured in this model. Use as directional guidance only.</div>', unsafe_allow_html=True)
+        else:
+            st.warning("No model found. Run `python3 backend/models/predictor.py` first.")
